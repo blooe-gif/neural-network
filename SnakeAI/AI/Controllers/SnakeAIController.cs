@@ -24,6 +24,11 @@ public sealed class SnakeAIController
         var rawOutputs = _network.Forward(LastInputs);
         LastOutputs = Softmax(rawOutputs);
 
+        if (LastOutputs.Length < 4)
+        {
+            return state.Snake.Direction;
+        }
+
         var direction = ArgMaxDirection(LastOutputs);
         if (IsReverse(state.Snake.Direction, direction))
         {
@@ -75,6 +80,11 @@ public sealed class SnakeAIController
 
     private static double[] Softmax(double[] values)
     {
+        if (values.Length == 0)
+        {
+            return Array.Empty<double>();
+        }
+
         var result = new double[values.Length];
         var max = values[0];
         for (var i = 1; i < values.Length; i++)

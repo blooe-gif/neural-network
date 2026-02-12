@@ -27,5 +27,7 @@ public sealed class Genome
         {
             Genes[i] = random.NextDouble(-scale, scale);
         }
+
+        Fitness = 0;
     }
 }

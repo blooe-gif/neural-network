@@ -11,7 +11,7 @@ public static class Fitness
         var foodReward = result.FoodEaten * 1200;
         var survivalReward = result.StepsSurvived * 1.5;
         var stallingPenalty = result.StepsSinceLastFood * 1.2;
-
-        return foodReward + survivalReward - stallingPenalty;
+        var score = foodReward + survivalReward - stallingPenalty;
+        return score;
     }
 }

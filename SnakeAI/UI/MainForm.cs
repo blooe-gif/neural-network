@@ -24,6 +24,7 @@ public sealed class MainForm : Form
     private Label _foodLabel = null!;
 
     private Simulator _simulator;
+    private readonly object _simLock = new();
     private readonly FormsTimer _timer; // <-- alias used here
     private bool _training;
     private bool _trainingBusy;
@@ -35,7 +36,7 @@ public sealed class MainForm : Form
         StartPosition = FormStartPosition.CenterScreen;
 
         var config = new GameConfig();
-        _simulator = new Simulator(config, seed: 12345, populationSize: 72, 6, 12, 8, 4);
+        _simulator = new Simulator(config, seed: 12345, populationSize: 72, networkShape: [6, 12, 8, 4]);
 
         var root = new TableLayoutPanel
         {
@@ -51,9 +52,20 @@ public sealed class MainForm : Form
         _gameSurface = new RenderSurface { Dock = DockStyle.Fill, BackColor = Color.Black };
         _networkSurface = new RenderSurface { Dock = DockStyle.Fill, BackColor = Color.Black };
 
-        _gameSurface.Paint += (_, e) => _gameRenderer.Draw(e.Graphics, _gameSurface.ClientRectangle, _simulator.PlaybackState);
+        _gameSurface.Paint += (_, e) =>
+        {
+            lock (_simLock)
+            {
+                _gameRenderer.Draw(e.Graphics, _gameSurface.ClientRectangle, _simulator.PlaybackState);
+            }
+        };
         _networkSurface.Paint += (_, e) =>
-            _neuralRenderer.Draw(e.Graphics, _networkSurface.ClientRectangle, _simulator.PlaybackController.Network);
+        {
+            lock (_simLock)
+            {
+                _neuralRenderer.Draw(e.Graphics, _networkSurface.ClientRectangle, _simulator.PlaybackController.Network);
+            }
+        };
 
         var controls = BuildControlsPanel();
 
@@ -127,14 +139,20 @@ public sealed class MainForm : Form
             {
                 for (var i = 0; i < _uiConfig.TrainingBurstPerTick; i++)
                 {
-                    _simulator.EvolveOneGeneration();
+                    lock (_simLock)
+                    {
+                        _simulator.EvolveOneGeneration();
+                    }
                 }
             });
             _trainingBusy = false;
         }
 
-        _simulator.UpdatePlaybackStep();
-        UpdateLabels();
+        lock (_simLock)
+        {
+            _simulator.UpdatePlaybackStep();
+            UpdateLabels();
+        }
         _gameSurface.Invalidate();
         _networkSurface.Invalidate();
     }
@@ -143,8 +161,11 @@ public sealed class MainForm : Form
     {
         _training = false;
         var config = new GameConfig();
-        _simulator = new Simulator(config, seed: 12345, populationSize: 72, 6, 12, 8, 4);
-        UpdateLabels();
+        lock (_simLock)
+        {
+            _simulator = new Simulator(config, seed: 12345, populationSize: 72, networkShape: [6, 12, 8, 4]);
+            UpdateLabels();
+        }
     }
 
     private void UpdateLabels()
